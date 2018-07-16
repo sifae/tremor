@@ -18,7 +18,7 @@ os.chdir("{0}/data".format(parent))
 class HTTPRequestHandler(BaseHTTPRequestHandler):
     #handle GET command
     def do_GET(self):
-        
+        answer = "OK"
         try:
             request = base64.b64decode(self.path[1:].encode()).decode()
         except BaseException:
@@ -49,13 +49,12 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         
     def send_data(self):
         file = open('data.txt','rb')
-        data = file.readlines()
-        print(data)
+        data = file.readline()
         self.send_response(200)
         self.send_header('Content-type','text-html')
         self.end_headers()
         #send file content to client
-        self.wfile.write(data.encode())
+        self.wfile.write(data)
         
 def run():
     print('http server is starting...')

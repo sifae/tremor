@@ -1,6 +1,5 @@
 #include <Wire.h>
 #include <Arduino.h>
-#include <ESP8266TrueRandom.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
@@ -34,6 +33,13 @@ long int cpt = 0;
 
 long int ti;
 volatile bool intFlag = true;
+
+int16_t ax,ay,az;
+int16_t gx,gy,gz;
+int16_t mx,my,mz;
+
+uint8_t Mag[7];                                                                   //Буфер для хранения данных магнетрона
+uint8_t Buf[14];                                                                  //Буфер для хранения данных акселерометра + гироскопа
 
 void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data) {  //Функция чтения по I2C из регистра
   Wire.beginTransmission(Address);
@@ -103,9 +109,12 @@ void callback() {
   digitalWrite(13, digitalRead(13) ^ 1);
 }
 
-void out(){
+void out(){                           //Вывод данных в Serial
+  //ax,ay,az - ускорение по x,y,z
+  //gx,gy,gz - угловая скорость по x,y,z
+  //mx,my,mz - курс по x,y,z
   Serial.print (ax, DEC);                                 //Вывод данных в serial
-  Serial.print ("\t");
+  Serial.print ("\t");                    
   Serial.print (ay, DEC);
   Serial.print ("\t");
   Serial.print (az, DEC);
@@ -116,24 +125,44 @@ void out(){
   Serial.print ("\t");
   Serial.print (gz, DEC);
   Serial.print ("\t");
+  Serial.print (mx + 200, DEC);                           //Вывод данных в serial
+  Serial.print ("\t");
+  Serial.print (my - 70, DEC);
+  Serial.print ("\t");
+  Serial.print (mz - 700, DEC);
+  Serial.print ("\t");
+  Serial.println("");
+}
+
+void Accelerometer_data_conversion(){                    //Преобразование данных акселерометра
+  ax = -(Buf[0] << 8 | Buf[1]);                   
+  ay = -(Buf[2] << 8 | Buf[3]);
+  az = Buf[4] << 8 | Buf[5];
+}
+
+void Gyroscope_data_conversion(){                        //Преобразование данных гироскопа
+  gx = -(Buf[8] << 8 | Buf[9]);                   
+  gy = -(Buf[10] << 8 | Buf[11]);
+  gz = Buf[12] << 8 | Buf[13];
+}
+
+void Magnetometer_data_conversion(){                     //Преобразование данных для магнетометра
+  mx = -(Mag[3] << 8 | Mag[2]);                   
+  my = -(Mag[1] << 8 | Mag[0]);
+  mz = -(Mag[5] << 8 | Mag[4]);
 }
 
 void loop() {
   int emg = map(analogRead(A0), 0, 1023, 0, 255);         //Данные с мышц
-  uint8_t Buf[14];
+  
   I2Cread(MPU9250_ADDRESS, 0x3B, 14, Buf);                //Чтение данных с IMU
-
-  int16_t ax = -(Buf[0] << 8 | Buf[1]);                   //Преобразование данных акселерометра
-  int16_t ay = -(Buf[2] << 8 | Buf[3]);
-  int16_t az = Buf[4] << 8 | Buf[5];
-
-  int16_t gx = -(Buf[8] << 8 | Buf[9]);                   //Преолбразование данных гироскопа
-  int16_t gy = -(Buf[10] << 8 | Buf[11]);
-  int16_t gz = Buf[12] << 8 | Buf[13];
-
+  
+  Accelerometer_data_conversion();
+  Gyroscope_data_conversion();
+  
   data_string = String(ax) + " " + String(ay) + " " + String(az) +
   " " + String(gx) + " " + String(gy) + " " + String(gz);
-  a = send_to_server(data_string);
+  a = sendtoserver(data_string);
   Serial.println(a);
   
   uint8_t ST1;                                            //Чтение данных магнетометра
@@ -143,20 +172,9 @@ void loop() {
   }
   while (!(ST1 & 0x01));
 
-  uint8_t Mag[7];
   I2Cread(MAG_ADDRESS, 0x03, 7, Mag);
 
-  int16_t mx = -(Mag[3] << 8 | Mag[2]);                   //Преобразование данных для магнетометра
-  int16_t my = -(Mag[1] << 8 | Mag[0]);
-  int16_t mz = -(Mag[5] << 8 | Mag[4]);
-
-  Serial.print (mx + 200, DEC);                           //Вывод данных в serial
-  Serial.print ("\t");
-  Serial.print (my - 70, DEC);
-  Serial.print ("\t");
-  Serial.print (mz - 700, DEC);
-  Serial.print ("\t");
-  Serial.println("");
+  Magnetometer_data_conversion();
 
   if (k <= 10000000) {
     k++;
