@@ -17,7 +17,6 @@ String a;
 void setup() {
 
     Serial.begin(115200);
-   // USE_SERIAL.setDebugOutput(true);
 
     Serial.println();
     Serial.println();

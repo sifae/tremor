@@ -1,5 +1,10 @@
 #include <Wire.h>
-//#include <TimerOne.h>
+#include <Arduino.h>
+#include <ESP8266TrueRandom.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WiFiMulti.h>
+#include <ESP8266HTTPClient.h>
+#include "base64.h"
 
 #define    MPU9250_ADDRESS            0x68
 #define    MAG_ADDRESS                0x0C
@@ -13,8 +18,22 @@
 #define    ACC_FULL_SCALE_4_G        0x08
 #define    ACC_FULL_SCALE_8_G        0x10
 #define    ACC_FULL_SCALE_16_G       0x18
-int k = 0;
 
+#define ssid "DIPEX_LAB"
+#define password "1234567890"
+#define addr "http://192.168.0.106/"
+
+ESP8266WiFiMulti WiFiMulti;
+
+int k = 0;
+String data_string;
+String a;
+
+// Counter
+long int cpt = 0;
+
+long int ti;
+volatile bool intFlag = true;
 
 void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data) {  //Функция чтения по I2C из регистра
   Wire.beginTransmission(Address);
@@ -34,10 +53,32 @@ void I2CwriteByte(uint8_t Address, uint8_t Register, uint8_t Data) {            
   Wire.endTransmission();
 }
 
-
-
-long int ti;
-volatile bool intFlag = true;
+String sendtoserver(String data){
+  String response = "None";
+  if((WiFiMulti.run() == WL_CONNECTED)) {
+        HTTPClient http;                  //Http begin
+        http.setTimeout(500000);
+        
+        String request = addr + base64::encode(data);
+        http.begin(request); //HTTP
+  
+        int httpCode = http.GET();      //Http Get
+        
+        if(httpCode > 0) {
+          if(httpCode == HTTP_CODE_OK) {
+            response = http.getString();
+          }
+          else{
+            response = "Unknown Response";
+          }
+        } 
+        else {
+           response = http.errorToString(httpCode).c_str();
+        }
+        http.end();
+    }
+    return response;
+}
 
 void setup()
 {
@@ -52,18 +93,29 @@ void setup()
   pinMode(D6, OUTPUT);
   pinMode(A0, INPUT);
   ti = millis();
+  delay(4000);
+  WiFiMulti.addAP(ssid, password);
 }
 
-
-
-
-
-// Counter
-long int cpt = 0;
 
 void callback() {
   intFlag = true;
   digitalWrite(13, digitalRead(13) ^ 1);
+}
+
+void out(){
+  Serial.print (ax, DEC);                                 //Вывод данных в serial
+  Serial.print ("\t");
+  Serial.print (ay, DEC);
+  Serial.print ("\t");
+  Serial.print (az, DEC);
+  Serial.print ("\t");
+  Serial.print (gx, DEC);
+  Serial.print ("\t");
+  Serial.print (gy, DEC);
+  Serial.print ("\t");
+  Serial.print (gz, DEC);
+  Serial.print ("\t");
 }
 
 void loop() {
@@ -79,21 +131,11 @@ void loop() {
   int16_t gy = -(Buf[10] << 8 | Buf[11]);
   int16_t gz = Buf[12] << 8 | Buf[13];
 
-  Serial.print (ax, DEC);                                 //Вывод данных в serial
-  Serial.print ("\t");
-  Serial.print (ay, DEC);
-  Serial.print ("\t");
-  Serial.print (az, DEC);
-  Serial.print ("\t");
-  Serial.print (gx, DEC);
-  Serial.print ("\t");
-  Serial.print (gy, DEC);
-  Serial.print ("\t");
-  Serial.print (gz, DEC);
-  Serial.print ("\t");
-
-
-
+  data_string = String(ax) + " " + String(ay) + " " + String(az) +
+  " " + String(gx) + " " + String(gy) + " " + String(gz);
+  a = send_to_server(data_string);
+  Serial.println(a);
+  
   uint8_t ST1;                                            //Чтение данных магнетометра
   do
   {
