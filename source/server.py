@@ -1,9 +1,10 @@
+# -*- coding: utf8 -*-
 from http.server import BaseHTTPRequestHandler,HTTPServer
 import os
 import base64
 import pickle
 
-addr = '192.168.0.106'
+addr = '10.7.130.13'
 port = 80
 global answer
 
@@ -13,6 +14,8 @@ def get_parent_dir(directory):
 
 parent = get_parent_dir(os.getcwd())
 os.chdir("{0}/data".format(parent))
+
+open('data.txt', 'wb').close()                                               #Удаление данных из data
 
 #Create custom HTTPRequestHandler class
 class HTTPRequestHandler(BaseHTTPRequestHandler):
@@ -24,8 +27,10 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         except BaseException:
             request = self.path[1:]
             
-        if request == 'get_data':
-            self.send_data()
+        if 'get_data' in request:
+            size = int(request.split(' ')[1])
+            self.send_data(size)
+            print(request)
             
         else:    
             self.store_data(request)
@@ -44,17 +49,20 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     
     def store_data(self,data):
         file = open('data.txt','a')
-        file.write(data)
+        file.write(data + "\n")
         file.close()  
         
-    def send_data(self):
+    def send_data(self,size):
+        data = ""
         file = open('data.txt','rb')
-        data = file.readline()
+        
+        for i in range(size):
+            data += file.readline().decode()
         self.send_response(200)
         self.send_header('Content-type','text-html')
         self.end_headers()
         #send file content to client
-        self.wfile.write(data)
+        self.wfile.write(data.encode())
         
 def run():
     print('http server is starting...')

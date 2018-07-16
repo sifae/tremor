@@ -18,9 +18,9 @@
 #define    ACC_FULL_SCALE_8_G        0x10
 #define    ACC_FULL_SCALE_16_G       0x18
 
-#define ssid "DIPEX_LAB"
-#define password "1234567890"
-#define addr "http://192.168.0.106/"
+#define ssid "Todnetz_3"
+#define password "minigore"
+#define addr "http://192.168.43.150/"
 
 ESP8266WiFiMulti WiFiMulti;
 
