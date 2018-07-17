@@ -18,7 +18,6 @@ global file
 file = 'data.db'
 
 def get_parent_dir(directory):
-    import os
     return os.path.dirname(directory)
 
 parent = get_parent_dir(os.getcwd())
@@ -139,7 +138,7 @@ class HTTPHandler_opencv(BaseHTTPRequestHandler):
         self.end_headers()
 
         #send file content to client
-        self.wfile.write(jsonarray)
+        self.wfile.write(jsonarray.encode())
         conn.close()    
         
 
